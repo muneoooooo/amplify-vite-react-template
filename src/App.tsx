@@ -7,6 +7,14 @@ const client = generateClient<Schema>();
 function App() {
   const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
 
+  const sub = client.subscriptions.receive()
+  .subscribe({
+    next: event => {
+      console.log(event)
+    }
+  }
+)
+
   useEffect(() => {
     client.models.Todo.observeQuery().subscribe({
       next: (data) => setTodos([...data.items]),
@@ -15,6 +23,10 @@ function App() {
 
   function createTodo() {
     client.models.Todo.create({ content: window.prompt("Todo content") });
+    client.mutations.publish({
+  channelName: "world",
+  content: "My first message!"
+})
   }
 
   return (
