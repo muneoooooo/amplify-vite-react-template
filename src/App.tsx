@@ -25,8 +25,8 @@ function App() {
     client.models.Todo.create({ content: window.prompt("Todo content") });
     client.mutations.publish({
   channelName: "world",
-  content: "My first message!"
-})
+  content: "My first message!"});
+  sub.unsubscribe();
   }
 
   return (
