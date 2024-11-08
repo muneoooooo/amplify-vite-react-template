@@ -1,52 +1,91 @@
-import { useEffect, useState } from "react";
 import type { Schema } from "../amplify/data/resource";
+import { useState, useEffect } from "react";
 import { generateClient } from "aws-amplify/data";
+import { Pagination } from "@aws-amplify/ui-react";
 
 const client = generateClient<Schema>();
 
-function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
-
-  const sub = client.subscriptions.receive()
-  .subscribe({
-    next: event => {
-      console.log(event)
-    }
-  }
-)
+export default function TodoList() {
+  const [todos, setTodos] = useState<Schema["Todo"]["type"][]>([]);
+  const [filteredTodos, setFilteredTodos] = useState<Schema["Todo"]["type"][]>([]);
+  const [filterText, setFilterText] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasMorePages, setHasMorePages] = useState(false);
+  const limit = 3;
 
   useEffect(() => {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
+    const fetchTodos = async () => {
+      setTodos([]);
+      setFilteredTodos([]);
+      setCurrentPage(1);
+      setTotalPages(1);
+      setHasMorePages(false);
+    };
+    fetchTodos();
   }, []);
 
-  function createTodo() {
-    client.models.Todo.create({ content: window.prompt("Todo content") });
-    client.mutations.publish({
-  channelName: "world",
-  content: "My first message!"});
-  sub.unsubscribe();
-  }
+  const createTodo = async () => {
+    await client.models.Todo.create({
+      content: window.prompt("Todo content?"),
+      isDone: false,
+    });
+  };
+
+  const handleFilterTextChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFilterText(event.target.value);
+  };
+
+  const handleSearchButtonClick = async () => {
+    let nextToken: string | null = undefined;
+    const filteredItems: Schema["Todo"]["type"][] = [];
+
+    do {
+      const { data: items, errors, nextToken: token } = await client.models.Todo.list({
+        filter: {
+          content: {
+            contains: filterText,
+          },
+        },
+        limit: limit,
+        nextToken: nextToken,
+      });
+      filteredItems.push(...items);
+      nextToken = token;
+    } while (nextToken !== null);
+
+    setFilteredTodos(filteredItems);
+    setCurrentPage(1);
+    setTotalPages(2);
+    setHasMorePages(true);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   return (
-    <main>
-      <h1>My todos</h1>
-      <button onClick={createTodo}>+ new</button>
+    <div>
+      <input
+        type="text"
+        placeholder="Filter todos"
+        value={filterText}
+        onChange={handleFilterTextChange}
+      />
+      <button onClick={handleSearchButtonClick}>Search</button>
+      <button onClick={createTodo}>Add new todo</button>
       <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
+        {filteredTodos.slice((currentPage - 1) * limit, currentPage * limit).map(({ id, content }) => (
+          <li key={id}>{content}</li>
         ))}
       </ul>
-      <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-        <a href="https://docs.amplify.aws/react/start/quickstart/#make-frontend-updates">
-          Review next step of this tutorial.
-        </a>
-      </div>
-    </main>
+      {hasMorePages && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onChange={(page) => handlePageChange(page as number)}
+        />
+      )}
+    </div>
   );
 }
-
-export default App;
