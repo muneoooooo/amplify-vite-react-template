@@ -44,7 +44,7 @@ export default function TodoList() {
       const { data: items, errors, nextToken: token } = await client.models.Todo.list({
         filter: {
           content: {
-            contains: filterText,
+            beginsWith: filterText,
           },
         },
         limit: limit,

@@ -16,5 +16,9 @@ backend.data.resources.cfnResources.cfnGraphqlApi.addPropertyOverride('Tags', [
   {
     Key: 'graphqlapi-tag-2',
     Value: 'graphql-tag-value-2'
+  },
+  {
+    Key: 'auto-delete',
+    Value: 'no'
   }
 ]);
